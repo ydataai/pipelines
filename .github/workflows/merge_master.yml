@@ -1,0 +1,114 @@
+name: merge master
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  prepare:
+    name: Calculate Version and build number
+    runs-on: ubuntu-20.04
+
+    outputs:
+      build_number: ${{ steps.short_sha.outputs.value }}
+      new_release: ${{ steps.semantic.outputs.new_release_published }}
+      release: ${{ steps.semantic.outputs.new_release_version }}
+      release_notes: ${{ steps.semantic.outputs.new_release_notes }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: Semantic validation
+      uses: cycjimmy/semantic-release-action@v2
+      id: semantic
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      with:
+        dry_run: true
+
+    - name: Git short sha
+      id: short_sha
+      run: echo "::set-output name=value::$(git rev-parse --short HEAD)"
+
+
+  build:
+    if: needs.prepare.outputs.new_release == 'true'
+
+    name: Build
+    runs-on: ubuntu-20.04
+
+    needs: prepare
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: Setup node
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.14'
+
+    - name: Cache node modules
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-node-modules
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
+
+    - name: Install Frontend
+      run: |
+        echo 'Installing frontend packages...'
+        cd frontend
+        npm install
+
+  dev-release:
+    if: needs.prepare.outputs.new_release == 'true'
+
+    name: Dev release
+    runs-on: ubuntu-20.04
+
+    needs: [ prepare, build ]
+
+    steps:
+    - name: Create pre release
+      uses: actions/create-release@v1
+      env:
+        BUILD: ${{ needs.prepare.outputs.build_number }}
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        VERSION: ${{ needs.prepare.outputs.release }}
+      with:
+        tag_name: build/${{ env.VERSION }}/${{ env.BUILD }}
+        release_name: ${{ env.VERSION }}.${{ env.BUILD }}
+        body: ${{ github.event.head_commit.message }}
+        prerelease: true
+
+
+  draft-release:
+    if: needs.prepare.outputs.new_release == 'true'
+
+    name: Draft release
+    runs-on: ubuntu-20.04
+
+    needs: [ prepare, build ]
+
+    steps:
+    - name: Delete previous drafts
+      uses: hugo19941994/delete-draft-releases@v0.1.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: Create draft release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      with:
+        tag_name: ${{ needs.prepare.outputs.release }}
+        release_name: ${{ needs.prepare.outputs.release }}
+        body: ${{ needs.prepare.outputs.release_notes }}
+        draft: true
