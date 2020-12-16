@@ -40,7 +40,6 @@ import { CustomRendererProps } from '../components/CustomTable';
 import { Description } from '../components/Description';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Radio from '@material-ui/core/Radio';
-import { ExternalLink } from '../atoms/ExternalLink';
 
 interface NewPipelineVersionState {
   validationError: string;
@@ -344,13 +343,11 @@ class NewPipelineVersion extends Page<{}, NewPipelineVersionState> {
                 <br />
                 You can also drag and drop the file here.
               </div>
-              <DocumentationCompilePipeline />
             </>
           )}
           {this.state.importMethod === ImportMethod.URL && (
             <>
               <div className={padding(10, 'b')}>URL must be publicly accessible.</div>
-              <DocumentationCompilePipeline />
             </>
           )}
 
@@ -665,12 +662,3 @@ class NewPipelineVersion extends Page<{}, NewPipelineVersionState> {
 
 export default NewPipelineVersion;
 
-const DocumentationCompilePipeline: React.FC = () => (
-  <div className={padding(10, 'b')}>
-    For expected file format, refer to{' '}
-    <ExternalLink href='https://www.kubeflow.org/docs/pipelines/sdk/build-component/#compile-the-pipeline'>
-      Compile Pipeline Documentation
-    </ExternalLink>
-    .
-  </div>
-);
