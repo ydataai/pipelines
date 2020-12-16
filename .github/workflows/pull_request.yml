@@ -26,9 +26,10 @@ jobs:
         path: ~/.npm
         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
 
-    - name: Install
+    - name: Install frontend
       run: |
         echo 'Installing packages...'
+        cd frontend
         npm install
         
     - name: Frontend lint
