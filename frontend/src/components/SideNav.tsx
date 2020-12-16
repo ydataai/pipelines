@@ -31,7 +31,6 @@ import { classes, stylesheet } from 'typestyle';
 import { ExternalLinks, RoutePage, RoutePrefix } from '../components/Router';
 import { commonCss, fontsize } from '../Css';
 import ExperimentsIcon from '../icons/experiments';
-import GitHubIcon from '../icons/GitHub-Mark-120px-plus.png';
 import PipelinesIcon from '../icons/pipelines';
 import { Apis } from '../lib/Apis';
 import { Deployments, KFP_FLAGS } from '../lib/Flags';
@@ -481,21 +480,6 @@ export class SideNav extends React.Component<SideNavInternalProps, SideNavState>
             </Link>
           </Tooltip>
           <hr className={classes(css.separator, collapsed && css.collapsedSeparator)} />
-          <ExternalUri
-            title={'Documentation'}
-            to={ExternalLinks.DOCUMENTATION}
-            collapsed={collapsed}
-            icon={className => <DescriptionIcon className={className} />}
-          />
-          <ExternalUri
-            title={'Github Repo'}
-            to={ExternalLinks.GITHUB}
-            collapsed={collapsed}
-            icon={className => (
-              <img src={GitHubIcon} className={classes(className, css.iconImage)} alt='Github' />
-            )}
-          />
-          <hr className={classes(css.separator, collapsed && css.collapsedSeparator)} />
           <IconButton
             className={classes(css.chevron, collapsed && css.collapsedChevron)}
             onClick={this._toggleNavClicked.bind(this)}
@@ -605,33 +589,6 @@ export class SideNav extends React.Component<SideNavInternalProps, SideNavState>
     }
   }
 }
-
-interface ExternalUriProps {
-  title: string;
-  to: string;
-  collapsed: boolean;
-  icon: (className: string) => React.ReactNode;
-}
-
-// tslint:disable-next-line:variable-name
-const ExternalUri: React.FC<ExternalUriProps> = ({ title, to, collapsed, icon }) => (
-  <Tooltip
-    title={title}
-    enterDelay={300}
-    placement={'right-start'}
-    disableFocusListener={!collapsed}
-    disableHoverListener={!collapsed}
-    disableTouchListener={!collapsed}
-  >
-    <a href={to} className={commonCss.unstyled} target='_blank' rel='noopener noreferrer'>
-      <Button className={classes(css.button, collapsed && css.collapsedButton)}>
-        {icon(css.icon)}
-        <span className={classes(collapsed && css.collapsedLabel, css.label)}>{title}</span>
-        <OpenInNewIcon className={css.openInNewTabIcon} />
-      </Button>
-    </a>
-  </Tooltip>
-);
 
 const EnhancedSideNav: React.FC<SideNavProps> = props => {
   const gkeMetadata = React.useContext(GkeMetadataContext);

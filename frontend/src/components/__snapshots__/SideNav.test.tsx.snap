@@ -174,21 +174,6 @@ exports[`SideNav populates the display build information using the response from
     <hr
       className="separator"
     />
-    <ExternalUri
-      collapsed={false}
-      icon={[Function]}
-      title="Documentation"
-      to="https://www.kubeflow.org/docs/pipelines/"
-    />
-    <ExternalUri
-      collapsed={false}
-      icon={[Function]}
-      title="Github Repo"
-      to="https://github.com/kubeflow/pipelines"
-    />
-    <hr
-      className="separator"
-    />
     <WithStyles(IconButton)
       className="chevron"
       onClick={[Function]}
