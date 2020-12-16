@@ -5,7 +5,7 @@ on:
     types: [prereleased]
 
 env:
-  COMPONENT: pipeline/pipelines-ui
+  COMPONENT: pipeline-ui
   CONTAINER: ${{ secrets.DEPLOYMENT_CONTAINER }}
   DEPLOYMENT_NAME: ${{ secrets.DEPLOYMENT_NAME }}
 

@@ -5,7 +5,7 @@ on:
     types: [released]
 
 env:
-  COMPONENT: pipeline/pipelines-ui
+  COMPONENT: pipeline-ui
   DOCKER_CONTAINER_REGISTRY: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}
   DOCKER_IMAGE_URL: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}/${{ github.repository_owner }}/ml-pipeline/frontend
 
