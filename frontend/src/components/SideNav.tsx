@@ -28,14 +28,12 @@ import * as React from 'react';
 import { RouterProps } from 'react-router';
 import { Link } from 'react-router-dom';
 import { classes, stylesheet } from 'typestyle';
-import { ExternalLinks, RoutePage, RoutePrefix } from '../components/Router';
+import { RoutePage, RoutePrefix } from '../components/Router';
 import { commonCss, fontsize } from '../Css';
 import ExperimentsIcon from '../icons/experiments';
 import PipelinesIcon from '../icons/pipelines';
-import { Apis } from '../lib/Apis';
 import { Deployments, KFP_FLAGS } from '../lib/Flags';
 import { LocalStorage, LocalStorageKey } from '../lib/LocalStorage';
-import { logger } from '../lib/Utils';
 import { GkeMetadataContext, GkeMetadata } from 'src/lib/GkeMetadata';
 
 export const sideNavColors = {
@@ -175,13 +173,6 @@ export const css = stylesheet({
   },
 });
 
-interface DisplayBuildInfo {
-  commitHash: string;
-  commitUrl: string;
-  date: string;
-  tagName: string;
-}
-
 interface SideNavProps extends RouterProps {
   page: string;
 }
@@ -191,7 +182,6 @@ interface SideNavInternalProps extends SideNavProps {
 }
 
 interface SideNavState {
-  displayBuildInfo?: DisplayBuildInfo;
   collapsed: boolean;
   jupyterHubAvailable: boolean;
   manualCollapseState: boolean;
@@ -215,41 +205,13 @@ export class SideNav extends React.Component<SideNavInternalProps, SideNavState>
     };
   }
 
-  public async componentDidMount(): Promise<void> {
-    window.addEventListener('resize', this._maybeResize.bind(this));
-    this._maybeResize();
-
-    async function fetchBuildInfo() {
-      const buildInfo = await Apis.getBuildInfo();
-      const commitHash = buildInfo.apiServerCommitHash || buildInfo.frontendCommitHash || '';
-      const tagName = buildInfo.apiServerTagName || buildInfo.frontendTagName || '';
-      return {
-        tagName: tagName || 'unknown',
-        commitHash: commitHash ? commitHash.substring(0, 7) : 'unknown',
-        commitUrl:
-          'https://www.github.com/kubeflow/pipelines' +
-          (commitHash && commitHash !== 'unknown' ? `/commit/${commitHash}` : ''),
-        date: buildInfo.buildDate
-          ? new Date(buildInfo.buildDate).toLocaleDateString('en-US')
-          : 'unknown',
-      };
-    }
-    const displayBuildInfo = await fetchBuildInfo().catch(err => {
-      logger.error('Failed to retrieve build info', err);
-      return undefined;
-    });
-
-    this.setStateSafe({ displayBuildInfo });
-  }
-
   public componentWillUnmount(): void {
     this._isMounted = false;
   }
 
   public render(): JSX.Element {
     const page = this.props.page;
-    const { collapsed, displayBuildInfo } = this.state;
-    const { gkeMetadata } = this.props;
+    const { collapsed } = this.state;
     const iconColor = {
       active: sideNavColors.fgActive,
       inactive: sideNavColors.fgDefault,
@@ -486,58 +448,6 @@ export class SideNav extends React.Component<SideNavInternalProps, SideNavState>
           >
             <ChevronLeftIcon />
           </IconButton>
-        </div>
-        <div className={collapsed ? css.infoHidden : css.infoVisible}>
-          {gkeMetadata.clusterName && gkeMetadata.projectId && (
-            <Tooltip
-              title={`Cluster name: ${gkeMetadata.clusterName}, Project ID: ${gkeMetadata.projectId}`}
-              enterDelay={300}
-              placement='top-start'
-            >
-              <div className={css.envMetadata}>
-                <span>Cluster name: </span>
-                <a
-                  href={`https://console.cloud.google.com/kubernetes/list?project=${gkeMetadata.projectId}&filter=name:${gkeMetadata.clusterName}`}
-                  className={classes(css.link, commonCss.unstyled)}
-                  rel='noopener'
-                  target='_blank'
-                >
-                  {gkeMetadata.clusterName}
-                </a>
-              </div>
-            </Tooltip>
-          )}
-          {displayBuildInfo && (
-            <Tooltip
-              title={`Build date: ${displayBuildInfo.date}, Commit hash: ${displayBuildInfo.commitHash}`}
-              enterDelay={300}
-              placement={'top-start'}
-            >
-              <div className={css.envMetadata}>
-                <span>Version: </span>
-                <a
-                  href={displayBuildInfo.commitUrl}
-                  className={classes(css.link, commonCss.unstyled)}
-                  rel='noopener'
-                  target='_blank'
-                >
-                  {displayBuildInfo.tagName}
-                </a>
-              </div>
-            </Tooltip>
-          )}
-          <Tooltip title='Report an Issue' enterDelay={300} placement={'top-start'}>
-            <div className={css.envMetadata}>
-              <a
-                href={ExternalLinks.GITHUB_ISSUE}
-                className={classes(css.link, commonCss.unstyled)}
-                rel='noopener'
-                target='_blank'
-              >
-                Report an Issue
-              </a>
-            </div>
-          </Tooltip>
         </div>
       </div>
     );
