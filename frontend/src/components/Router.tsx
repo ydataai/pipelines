@@ -125,12 +125,6 @@ export const RoutePageFactory = {
   },
 };
 
-export const ExternalLinks = {
-  DOCUMENTATION: 'https://www.kubeflow.org/docs/pipelines/',
-  GITHUB: 'https://github.com/kubeflow/pipelines',
-  GITHUB_ISSUE: 'https://github.com/kubeflow/pipelines/issues/new/choose',
-};
-
 export interface DialogProps {
   buttons?: Array<{ onClick?: () => any; text: string }>;
   // TODO: This should be generalized to any react component.

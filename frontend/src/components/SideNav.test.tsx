@@ -253,62 +253,6 @@ describe('SideNav', () => {
     });
   });
 
-  it('populates the cluster information from context', async () => {
-    const clusterName = 'some-cluster-name';
-    const projectId = 'some-project-id';
-
-    clusterNameSpy.mockImplementationOnce(() => Promise.resolve(clusterName));
-    projectIdSpy.mockImplementationOnce(() => Promise.resolve(projectId));
-    buildInfoSpy.mockImplementationOnce(() => Promise.reject('Error when fetching build info'));
-
-    tree = mount(
-      <GkeMetadataProvider>
-        <MemoryRouter>
-          <EnhancedSideNav page={RoutePage.PIPELINES} {...routerProps} />
-        </MemoryRouter>
-      </GkeMetadataProvider>,
-    );
-    const base = tree.html();
-    await TestUtils.flushPromises();
-    expect(
-      diffHTML({
-        base,
-        baseAnnotation: 'base',
-        update: tree.html(),
-        updateAnnotation: 'after GKE metadata loaded',
-      }),
-    ).toMatchInlineSnapshot(`
-      Snapshot Diff:
-      - base
-      + after GKE metadata loaded
-
-      @@ --- --- @@
-                  <path fill="none" d="M0 0h24v24H0z"></path></svg></span
-              ><span class="MuiTouchRipple-root-53"></span>
-            </button>
-          </div>
-          <div class="infoVisible">
-      +     <div
-      +       class="envMetadata"
-      +       title="Cluster name: some-cluster-name, Project ID: some-project-id"
-      +     >
-      +       <span>Cluster name: </span
-      +       ><a
-      +         href="https://console.cloud.google.com/kubernetes/list?project=some-project-id&amp;filter=name:some-cluster-name"
-      +         class="link unstyled"
-      +         rel="noopener"
-      +         target="_blank"
-      +         >some-cluster-name</a
-      +       >
-      +     </div>
-            <div class="envMetadata" title="Report an Issue">
-              <a
-                href="https://github.com/kubeflow/pipelines/issues/new/choose"
-                class="link unstyled"
-                rel="noopener"
-    `);
-  });
-
   it('displays the frontend tag name if the api server hash is not returned', async () => {
     const buildInfo = {
       apiServerReady: true,
