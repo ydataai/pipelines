@@ -1,0 +1,86 @@
+name: released
+
+on:
+  release:
+    types: [released]
+
+env:
+  COMPONENT: pipeline-ui
+  DOCKER_CONTAINER_REGISTRY: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}
+  DOCKER_IMAGE_URL: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}/${{ github.repository_owner }}/ml-pipeline/frontend
+
+jobs:
+  prepare:
+    name: Extract version and build number
+    runs-on: ubuntu-20.04
+
+    outputs:
+      build_number: ${{ steps.short_sha.outputs.value }}
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+    - name: Version
+      id: version
+      run: echo ::set-output name=value::`echo ${{ github.ref }} | sed -n -E 's/refs\/tags\/([0-9]+.[0-9]+.[0-9]+)/\1/p'`
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Git short sha
+      id: short_sha
+      run: echo "::set-output name=value::$(git rev-parse --short HEAD)"
+
+  docker:
+    name: Docker tag and push
+    runs-on: ubuntu-20.04
+
+    needs: prepare
+
+    steps:
+    - name: Login to GitHub docker
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ env.DOCKER_CONTAINER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Docker tag and push
+      env:
+        SOURCE: ${{ env.DOCKER_IMAGE_URL }}:${{ needs.prepare.outputs.version }}.${{ needs.prepare.outputs.build_number }}
+        DESTINATION: ${{ env.DOCKER_IMAGE_URL }}:${{ needs.prepare.outputs.version }}
+      run: |
+        docker pull $SOURCE
+        docker tag $SOURCE $DESTINATION
+        docker push $DESTINATION
+
+  update-manifests:
+    name: Update Manifests
+    runs-on: ubuntu-20.04
+
+    needs: prepare
+
+    steps:
+    - name: Checkout manifests repo
+      uses: actions/checkout@v2
+      with:
+        repository: ydataai/manifests
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - uses: imranismail/setup-kustomize@v1
+      with:
+        kustomize-version: "3.8.5"
+
+    - name: Update kustomization image tag
+      env:
+        VERSION: ${{ needs.prepare.outputs.version }}
+      run: |
+        cd ydata/${COMPONENT}
+        kustomize edit set image ${{ secrets.KUSTOMIZE_CONTAINER_IMAGE }}=${DOCKER_IMAGE_URL}:${VERSION}
+    - name: Commit and push image update into manifests repo
+      env:
+        VERSION: ${{ needs.prepare.outputs.version }}
+      run: |
+        git config user.email "azory@ydata.ai"
+        git config user.name "Azory YData Bot"
+        git commit -a -m "chore(bump): [CI] [PROD] bump ${COMPONENT} to $VERSION"
+        git push origin master

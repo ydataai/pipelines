@@ -1,0 +1,121 @@
+name: prereleased
+
+on:
+  release:
+    types: [prereleased]
+
+env:
+  COMPONENT: pipeline-ui
+  CONTAINER: ${{ secrets.DEPLOYMENT_CONTAINER }}
+  DEPLOYMENT_NAME: ${{ secrets.DEPLOYMENT_NAME }}
+
+  GCLOUD_SDK_VERSION: ${{ secrets.GCLOUD_SDK_VERSION }}
+
+  CLUSTER: ${{ secrets.GOOGLE_CLUSTER_DEV }}
+  DOCKER_CONTAINER_REGISTRY: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}
+  DOCKER_IMAGE_URL: ${{ secrets.PRIVATE_CONTAINER_REGISTRY }}/${{ github.repository_owner }}/ml-pipeline/frontend
+  PROJECT: ${{ secrets.GOOGLE_PROJECT_ID_DEV }}
+  ZONE: ${{ secrets.GOOGLE_CLUSTER_DEV_ZONE }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-20.04
+
+    outputs:
+      version: ${{steps.version.outputs.value}}
+
+    steps:
+    - name: Version
+      id: version
+      run: echo ::set-output name=value::`echo ${{ github.ref }} | sed -n -E 's/refs\/tags\/build\/([0-9]+.[0-9]+.[0-9]+)\/([[:alnum:]])/\1.\2/p'`
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup node
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.14'
+
+    - name: Cache node modules
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-node-modules
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
+
+    - name: Login to Github container registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ env.DOCKER_CONTAINER_REGISTRY }}
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: Set up Docker buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build and push frontend
+      id: docker_build
+      uses: docker/build-push-action@v2
+      with:
+        file: frontend/Dockerfile
+        push: true
+        tags: ${{ env.DOCKER_IMAGE_URL }}:${{ steps.version.outputs.value }}
+        secrets: |
+          GIT_AUTH_TOKEN=${{ secrets.GHCR_TOKEN }}
+
+
+  deploy:
+    name: Deploy frontend
+    runs-on: ubuntu-20.04
+
+    needs: build
+
+    steps:
+    - name: Setup gcloud environment
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        version: ${{ env.GCLOUD_SDK_VERSION }}
+        project_id: ${{ env.PROJECT }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Deploy frontend to development cluster
+      run: |
+        gcloud container clusters get-credentials ${{ env.CLUSTER }} --zone ${{ env.ZONE }}
+        kubectl -n ydata set image deployment ${DEPLOYMENT_NAME} ${CONTAINER}=${DOCKER_IMAGE_URL}:${{ needs.build.outputs.version }}
+  
+  update-manifests:
+    name: Update manifests
+    runs-on: ubuntu-20.04
+
+    needs: build
+
+    steps:
+    - name: Checkout manifests repo
+      uses: actions/checkout@v2
+      with:
+        repository: ydataai/manifests
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - uses: imranismail/setup-kustomize@v1
+      with:
+        kustomize-version: "3.8.5"
+
+    - name: Update kustomization image tag
+      env:
+        VERSION: ${{ needs.build.outputs.version }}
+      run: |
+        cd ydata/${COMPONENT}
+        kustomize edit set image ${{ secrets.KUSTOMIZE_CONTAINER_IMAGE }}=${DOCKER_IMAGE_URL}:${VERSION}
+        
+    - name: Commit and push image update into manifests repo
+      env:
+        VERSION: ${{ needs.build.outputs.version }}
+      run: |
+        git config user.email "azory@ydata.ai"
+        git config user.name "Azory YData Bot"
+        git commit -a -m "chore(bump): [CI] [DEV] bump ${COMPONENT} to $VERSION"
+        git push origin master
